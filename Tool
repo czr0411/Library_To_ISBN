@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Barcode to ISBN">
+  <title>Barcode to ISBN Tool</title>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; max-width: 600px; }
+    input, button { font-size: 1.2rem; width: 100%; margin-top: 1rem; padding: 0.5rem; }
+    .result { margin-top: 2rem; font-size: 1.1rem; }
+  </style>
+</head>
+<body>
+  <h1>📚 Barcode ➜ ISBN</h1>
+  <input type="text" id="barcode" placeholder="Enter library barcode">
+  <button onclick="search()">Search</button>
+  <div class="result" id="result"></div>
+
+  <script>
+    async function search() {
+      const barcode = document.getElementById('barcode').value.trim();
+      const resultEl = document.getElementById('result');
+      resultEl.innerHTML = 'Searching...';
+
+      const formData = new URLSearchParams();
+      formData.append('mfn', '1');
+      formData.append('search_code', 'BAR');
+      formData.append('search_field', barcode);
+      formData.append('search_op', 'AND');
+
+      try {
+        const res = await fetch('https://webpac.tphcc.gov.tw/webpac/search.cfm', {
+          method: 'POST',
+          body: formData
+        });
+        const text = await res.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(text, 'text/html');
+
+        const titleEl = doc.querySelector('.title');
+        const fullText = doc.body.innerText;
+        const isbnMatch = fullText.match(/ISBN[:：\s]*([\d\-Xx]+)/);
+
+        const title = titleEl ? titleEl.textContent.trim() : 'Title not found';
+        const isbn = isbnMatch ? isbnMatch[1] : 'ISBN not found';
+
+        resultEl.innerHTML = `<b>Title:</b> ${title}<br><b>ISBN:</b> ${isbn}`;
+      } catch (err) {
+        resultEl.innerHTML = 'Search failed. Please check the barcode and your internet connection.';
+      }
+    }
+  </script>
+</body>
+</html>
